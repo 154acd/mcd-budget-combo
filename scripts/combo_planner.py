@@ -9,7 +9,7 @@ combo_planner.py — mcd-budget-combo 候选搭配枚举器
 
 用法：
     python combo_planner.py plan --menu menu.json --budget 30 \
-        [--coupons coupons.json] [--nutrition nutrition.json] [--max-candidates 6]
+        [--coupons coupons.json] [--nutrition nutrition.json] [--max-candidates 3]
     python combo_planner.py selftest
 
 输入文件格式见 references/combo-strategy.md 第 1.1 / 6 节。
@@ -323,6 +323,15 @@ def cmd_plan(args):
     if args.coupons:
         with open(args.coupons, encoding="utf-8") as f:
             coupons = json.load(f)
+    else:
+        # 券内联：读取 menu 文件顶层 coupons 键（与 mcd-bulk-combo 一致的内联通路）
+        try:
+            with open(args.menu, encoding="utf-8") as f:
+                raw_menu = json.load(f)
+            if isinstance(raw_menu, dict):
+                coupons = raw_menu.get("coupons") or []
+        except (OSError, json.JSONDecodeError):
+            coupons = []
     nutrition = None
     if args.nutrition:
         with open(args.nutrition, encoding="utf-8") as f:
@@ -513,7 +522,7 @@ def main(argv=None):
     p_plan.add_argument("--budget", required=True, type=float, help="预算（元）")
     p_plan.add_argument("--coupons", help="可选：query-store-coupons 返回的券数组（JSON 文件）")
     p_plan.add_argument("--nutrition", help="可选：list-nutrition-foods 的 {名称: 千卡} 映射（JSON 文件）")
-    p_plan.add_argument("--max-candidates", type=int, default=6, help="进入核价的候选上限，默认 6")
+    p_plan.add_argument("--max-candidates", type=int, default=3, help="进入核价的候选上限，默认 3（1 分钟口径）")
     p_plan.set_defaults(func=cmd_plan)
 
     p_test = sub.add_parser("selftest", help="内置断言自检（无需输入文件）")

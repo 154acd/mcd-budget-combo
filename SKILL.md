@@ -37,7 +37,7 @@ mcd-mcp 连接器已配置并启用（Streamable HTTP，url 为 https://mcp.mcd.
 
 ### 第 3 步：查附近门店
 
-调用 query-nearby-stores：searchType=2、city、keyword、beType=1（到店自取）。返回已按 distance 升序，直接取前 5 家（硬上限）。向用户展示店名 / 距离 / 营业状态。
+调用 query-nearby-stores：searchType=2、city、keyword、beType=1（到店自取）。返回已按 distance 升序，**默认只取最近 1 家**（把整轮压进 1 分钟的关键）；用户明确说「多看几家 / 对比几家」时扩到 3 家（硬上限 5 家）。向用户展示店名 / 距离 / 营业状态。
 
 ### 第 4 步：逐店查真实可用券
 
@@ -45,11 +45,11 @@ mcd-mcp 连接器已配置并启用（Streamable HTTP，url 为 https://mcp.mcd.
 
 ### 第 5 步：逐店拉菜单
 
-对每家门店调用 query-meals（storeCode + orderType=1 + beType=1），把返回的 data 对象用 Write 工具落盘为 menu.json 供第 6 步的规划脚本读取（工具返回会先进入上下文，落盘的用途是供脚本读取而非节省上下文）。可只保留规划脚本需要的字段——`categories[].meals[].code/tags` 与 `meals{}` 的 `name/currentPrice/canWithOrder/discountType`，其余字段（image、withOrder、originalPrice 等）可裁剪，裁剪不影响结果。
+对每家门店调用 query-meals（storeCode + orderType=1 + beType=1），把返回的 data 对象用 Write 工具落盘为 menu.json 供第 6 步的规划脚本读取（工具返回会先进入上下文，落盘的用途是供脚本读取而非节省上下文）。可只保留规划脚本需要的字段——`categories[].meals[].code/tags` 与 `meals{}` 的 `name/currentPrice/canWithOrder/discountType`，其余字段（image、withOrder、originalPrice 等）可裁剪，裁剪不影响结果（裁剪后每个文件小 60-70%）。第 4 步的券数组（通常 0~7 条）不单独落盘，作为顶层 `coupons` 键写入同一 menu.json（脚本自动读取，无需 --coupons）。
 
 ### 第 6 步：枚举候选 + 真实核价
 
-1. 运行 `python scripts/combo_planner.py plan --menu menu.json --budget <预算>`，按需附加 `--coupons coupons.json`（第 4 步的券）与 `--nutrition nutrition.json`，得到不超过 6 个候选；
+1. 运行 `python scripts/combo_planner.py plan --menu menu.json --budget <预算>`，按需附加 `--nutrition nutrition.json`，得到不超过 3 个候选（券已内联在 menu.json 顶层 coupons 键，脚本自动读取；如单独存了券文件才用 --coupons 指定）；
 2. 对每个候选调用 calculate-price 真实核价（用券时在对应 item 上传 couponId 与 couponCode）；
 3. 核价超预算的候选丢弃，取同策略下一个候选；用核价结果替换目录价，重算件数 / 主食数 / 剩余额度；
 4. 需要展示千卡时，先调用一次 list-nutrition-foods 建立「名称 → 千卡」表并传给 --nutrition；未覆盖的商品标注「营养数据暂缺」，不得估算编造。
@@ -73,7 +73,7 @@ mcd-mcp 连接器已配置并启用（Streamable HTTP，url 为 https://mcp.mcd.
 | --- | --- |
 | 调用编排 | 无依赖关系的调用（如多家门店各自的 query-store-coupons / query-meals）可在同一步骤内并行；有依赖关系的（先取门店再查券、先探测配送费再枚举）必须串行。复用会话内已获取的结果，不做无意义重复查询 |
 | 单位归一化 | 菜单 currentPrice 是「元」；calculate-price 返回全部是「分」，展示一律 ÷100 换算成元 |
-| 调用预算 | 门店 ≤ 5 家；单店 calculate-price ≤ 6 次——按策略顺序核价，某候选超预算即换用 planner 输出的下一个候选；候补耗尽仍无足够方案时，以已通过的最优方案输出并说明差额，不得为凑数编造 |
+| 调用预算 | 门店默认 1 家（用户说「多看几家」时扩到 3 家，硬上限 5 家）；单店 calculate-price ≤ 3 次——同店多个候选的核价相互无依赖，可并行发出；按策略顺序核价，某候选超预算即换用 planner 输出的下一个候选；候补耗尽仍无足够方案时，以已通过的最优方案输出并说明差额，不得为凑数编造 |
 | 文件路径 | 规划脚本的 --menu / --coupons / --nutrition 一律传 Windows 绝对路径（如 D:\work\menu.json）；运行脚本使用本机 Python 可执行文件的绝对路径，不要依赖 /tmp 等 Unix 路径或相对路径 |
 | 限流与鉴权 | 429 退避 3 秒重试 1 次，仍失败如实告知；401 引导用户重新激活 Token |
 | beType 矩阵 | 到店自取 beType=1 不传 beCode；麦乐送 beType=2 必传 beCode（来自 delivery-query-stores）。参数细节见 references/mcd-tools.md |
