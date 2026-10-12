@@ -45,7 +45,7 @@ mcd-mcp 连接器已配置并启用（Streamable HTTP，url 为 https://mcp.mcd.
 
 ### 第 5 步：逐店拉菜单
 
-对每家门店调用 query-meals（storeCode + orderType=1 + beType=1），把返回的 data 对象用 Write 工具落盘为 menu.json 供第 6 步的规划脚本读取（工具返回会先进入上下文，落盘的用途是供脚本读取而非节省上下文）。可只保留规划脚本需要的字段——`categories[].meals[].code/tags` 与 `meals{}` 的 `name/currentPrice/canWithOrder/discountType`，其余字段（image、withOrder、originalPrice 等）可裁剪，裁剪不影响结果（裁剪后每个文件小 60-70%）。第 4 步的券数组（通常 0~7 条）不单独落盘，作为顶层 `coupons` 键写入同一 menu.json（脚本自动读取，无需 --coupons）。
+对每家门店调用 query-meals（storeCode + orderType=1 + beType=1），把返回的 data 对象用 Write 工具落盘为 menu.json 供第 6 步的规划脚本读取（工具返回会先进入上下文，落盘的用途是供脚本读取而非节省上下文）。可只保留规划脚本需要的字段——`categories[].meals[].code/tags` 与 `meals{}` 的 `name/currentPrice/canWithOrder/discountType`，其余字段（image、withOrder、originalPrice 等）可裁剪，裁剪不影响结果（实测裁剪后约小 30-40%）。第 4 步的券数组（通常 0~7 条）不单独落盘，作为顶层 `coupons` 键写入同一 menu.json（脚本自动读取，无需 --coupons）。
 
 ### 第 6 步：枚举候选 + 真实核价
 
