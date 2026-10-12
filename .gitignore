@@ -1,0 +1,21 @@
+# ===== 防泄密：绝不提交任何凭据、真实配置或个人数据 =====
+.env
+.env.*
+*.local.json
+mcp-config.json
+
+# ===== WorkBuddy 项目数据（非参赛内容）=====
+.workbuddy/
+
+# ===== Python =====
+__pycache__/
+*.pyc
+*.pyo
+
+# ===== 打包产物 =====
+dist/
+*.zip
+
+# ===== 系统垃圾 =====
+.DS_Store
+Thumbs.db
